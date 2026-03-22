@@ -1,26 +1,36 @@
 name: Build Android APK
+
 on:
   push:
     branches: [main]
     tags: ['v*']
   workflow_dispatch:
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
       
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with: 
           node-version: '20'
+          cache: 'npm' # Optimization: Caches your node_modules to speed up subsequent runs
           
-      - uses: actions/setup-java@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with: 
           java-version: '17'
           distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3 # Fix: Intelligently handles Gradle caching and prevents corrupted JARs
           
-      - uses: android-actions/setup-android@v3
-      
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        
       - name: Install dependencies
         run: npm install
         
@@ -43,16 +53,18 @@ jobs:
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/violin-reference.jks
         
       - name: Build signed release APK
+        # Fix: Added --no-daemon and --stacktrace
         run: |
           chmod +x android/gradlew || true
           cd android
-          ./gradlew assembleRelease \
+          ./gradlew assembleRelease --no-daemon --stacktrace \
             -Pandroid.injected.signing.store.file=$PWD/app/violin-reference.jks \
             -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
             -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
             
-      - uses: actions/upload-artifact@v4
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
         with:
           name: violin-reference-release
           path: android/app/build/outputs/apk/release/app-release.apk
