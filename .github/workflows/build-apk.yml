@@ -25,7 +25,7 @@ jobs:
         run: npm install
         
       - name: Install TypeScript for Capacitor
-        run: npm install -D typescript @capacitor/cli @capacitor/android
+        run: npm install -D typescript @capacitor/cli @capacitor/android --legacy-peer-deps
         
       - name: Build web app
         run: npm run build
