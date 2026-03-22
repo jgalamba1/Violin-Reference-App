@@ -30,15 +30,8 @@ jobs:
       - name: Build web app
         run: npm run build
         
-      - name: Setup Capacitor platforms
-        run: |
-          if [ ! -d "android" ]; then
-            npx cap add android
-          else
-            npx cap update android
-          fi
-      
-      - name: Sync Capacitor
+      # Skip setup entirely - use sync which handles everything
+      - name: Sync Capacitor (creates/updates platforms)
         run: npx cap sync android
         
       - name: Decode keystore
