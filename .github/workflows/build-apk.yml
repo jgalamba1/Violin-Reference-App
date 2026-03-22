@@ -1,4 +1,4 @@
-name: Build Android APK (On-The-Fly)
+name: Build Android APK (Version Fixed)
 
 on:
   push:
@@ -25,25 +25,32 @@ jobs:
         
       - name: Install Dependencies
         run: |
-          npm install
-          npm install -D @capacitor/cli @capacitor/android
+          # Use --legacy-peer-deps to force NPM to ignore the version conflicts
+          npm install --legacy-peer-deps
+          # Pin these to @6 to match your @capacitor/core@6.2.1
+          npm install -D @capacitor/cli@6 @capacitor/android@6 --legacy-peer-deps
         
       - name: Build Web App
         run: npm run build
         
       - name: Generate and Patch Android Folder
         run: |
-          # 1. Create the folder
-          npx cap add android
+          # Create the folder, ignore error if it already exists
+          npx cap add android || true
           
-          # 2. DISABLE JETIFIER (The fix for Bouncy Castle crash)
-          # This command searches for enableJetifier and sets it to false
-          sed -i 's/android.enableJetifier=true/android.enableJetifier=false/g' android/gradle.properties
+          # 1. DISABLE JETIFIER (The fix for Bouncy Castle crash)
+          # We use '|| true' and check if file exists to prevent exit codes
+          if [ -f android/gradle.properties ]; then
+            sed -i 's/android.enableJetifier=true/android.enableJetifier=false/g' android/gradle.properties
+            # If the line didn't exist, append it
+            grep -q "android.enableJetifier" android/gradle.properties || echo "android.enableJetifier=false" >> android/gradle.properties
+          fi
           
-          # 3. FORCE SDK VERSIONS (Ensures compatibility with Java 21)
-          # We update variables.gradle to use modern SDK targets
-          sed -i 's/compileSdkVersion = [0-9]*/compileSdkVersion = 34/g' android/variables.gradle
-          sed -i 's/targetSdkVersion = [0-9]*/targetSdkVersion = 34/g' android/variables.gradle
+          # 2. FORCE SDK VERSIONS
+          if [ -f android/variables.gradle ]; then
+            sed -i 's/compileSdkVersion = [0-9]*/compileSdkVersion = 34/g' android/variables.gradle
+            sed -i 's/targetSdkVersion = [0-9]*/targetSdkVersion = 34/g' android/variables.gradle
+          fi
       
       - name: Sync Capacitor
         run: npx cap sync android
