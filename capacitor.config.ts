@@ -1,5 +1,4 @@
 import type { CapacitorConfig } from '@capacitor/cli';
-
 const config: CapacitorConfig = {
   appId: 'com.violin.reference',
   appName: 'Violin Reference',
@@ -7,17 +6,8 @@ const config: CapacitorConfig = {
   android: {
     allowMixedContent: true,
     backgroundColor: '#faf8f4',
-  },
-  plugins: {
-    StatusBar: {
-      backgroundColor: '#1a1510',
-      style: 'LIGHT',
-    },
-    Keyboard: {
-      resize: 'body',
-      resizeOnFullScreen: true,
-    },
-  },
+    versionName: '1.0.0',
+    versionCode: 1
+  }
 };
-
 export default config;
