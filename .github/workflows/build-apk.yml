@@ -17,12 +17,11 @@ jobs:
         uses: actions/setup-node@v4
         with: 
           node-version: '20'
-          # Cache removed to avoid the "lock file not found" error
           
-      - name: Setup Java
+      - name: Setup Java 21
         uses: actions/setup-java@v4
         with: 
-          java-version: '17'
+          java-version: '21' # Updated to 21 for better dependency compatibility
           distribution: 'temurin'
 
       - name: Setup Gradle
@@ -34,8 +33,7 @@ jobs:
       - name: Install Project Dependencies
         run: npm install
         
-      - name: Install Capacitor CLI & Android Platform
-        # This ensures the specific Capacitor tools are available to the runner
+      - name: Install Capacitor CLI
         run: npm install -D typescript @capacitor/cli @capacitor/android --legacy-peer-deps
         
       - name: Build web app
@@ -52,12 +50,16 @@ jobs:
         
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/violin-reference.jks
-        
-      - name: Build signed release APK
+
+      - name: Clean and Build signed release APK
         run: |
           chmod +x android/gradlew || true
           cd android
-          ./gradlew assembleRelease --no-daemon --stacktrace \
+          # Force clean and use a local project-level Gradle user home to avoid global cache locks
+          ./gradlew clean assembleRelease \
+            --no-daemon \
+            --stacktrace \
+            -g .gradle_home \
             -Pandroid.injected.signing.store.file=$PWD/app/violin-reference.jks \
             -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
             -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
