@@ -17,7 +17,7 @@ jobs:
         uses: actions/setup-node@v4
         with: 
           node-version: '20'
-          cache: 'npm' # Optimization: Caches your node_modules to speed up subsequent runs
+          # Cache removed to avoid the "lock file not found" error
           
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -26,15 +26,16 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3 # Fix: Intelligently handles Gradle caching and prevents corrupted JARs
+        uses: gradle/actions/setup-gradle@v3
           
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         
-      - name: Install dependencies
+      - name: Install Project Dependencies
         run: npm install
         
-      - name: Install TypeScript for Capacitor
+      - name: Install Capacitor CLI & Android Platform
+        # This ensures the specific Capacitor tools are available to the runner
         run: npm install -D typescript @capacitor/cli @capacitor/android --legacy-peer-deps
         
       - name: Build web app
@@ -53,7 +54,6 @@ jobs:
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/violin-reference.jks
         
       - name: Build signed release APK
-        # Fix: Added --no-daemon and --stacktrace
         run: |
           chmod +x android/gradlew || true
           cd android
