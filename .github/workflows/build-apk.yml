@@ -17,16 +17,17 @@ jobs:
         uses: actions/setup-node@v4
         with: 
           node-version: '20'
+          # No cache here to avoid the lockfile error
           
       - name: Setup Java 21
         uses: actions/setup-java@v4
         with: 
-          java-version: '21' # Updated to 21 for better dependency compatibility
+          java-version: '21' # REQUIRED for bcprov 1.79
           distribution: 'temurin'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-          
+      # We are skipping the specialized Gradle Setup Action temporarily 
+      # because the GitHub Cache Service is reporting "400" errors.
+        
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         
@@ -55,7 +56,8 @@ jobs:
         run: |
           chmod +x android/gradlew || true
           cd android
-          # Force clean and use a local project-level Gradle user home to avoid global cache locks
+          # --no-daemon prevents background process issues
+          # -g .gradle_home forces a fresh local environment
           ./gradlew clean assembleRelease \
             --no-daemon \
             --stacktrace \
