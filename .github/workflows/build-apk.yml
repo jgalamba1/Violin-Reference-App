@@ -30,10 +30,9 @@ jobs:
       - name: Build web app
         run: npm run build
         
-      - name: Setup Capacitor (if needed)
+      - name: Setup Capacitor platforms
         run: |
           if [ ! -d "android" ]; then
-            npx cap init "Violin Reference" com.violin.reference --web-dir dist
             npx cap add android
           else
             npx cap update android
