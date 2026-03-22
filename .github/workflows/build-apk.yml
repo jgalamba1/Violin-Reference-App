@@ -9,33 +9,52 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
       - uses: actions/setup-node@v4
         with: 
           node-version: '20'
+          
       - uses: actions/setup-java@v4
         with: 
           java-version: '17'
           distribution: 'temurin'
+          
       - uses: android-actions/setup-android@v3
-      - run: npm install
-      - run: npm run build
-      - run: |
+      
+      - name: Install dependencies
+        run: npm install
+        
+      - name: Install TypeScript for Capacitor
+        run: npm install -D typescript @capacitor/cli @capacitor/android
+        
+      - name: Build web app
+        run: npm run build
+        
+      - name: Setup Capacitor (if needed)
+        run: |
           if [ ! -d "android" ]; then
             npx cap init "Violin Reference" com.violin.reference --web-dir dist
             npx cap add android
+          else
+            npx cap update android
           fi
-      - run: npx cap sync android
+      
+      - name: Sync Capacitor
+        run: npx cap sync android
+        
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/violin-reference.jks
+        
       - name: Build signed release APK
         run: |
-          chmod +x android/gradlew
+          chmod +x android/gradlew || true
           cd android
           ./gradlew assembleRelease \
             -Pandroid.injected.signing.store.file=$PWD/app/violin-reference.jks \
             -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
             -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+            
       - uses: actions/upload-artifact@v4
         with:
           name: violin-reference-release
