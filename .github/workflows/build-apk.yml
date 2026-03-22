@@ -3,7 +3,6 @@ name: Build Android APK
 on:
   push:
     branches: [main]
-    tags: ['v*']
   workflow_dispatch:
 
 jobs:
@@ -17,49 +16,56 @@ jobs:
         uses: actions/setup-node@v4
         with: 
           node-version: '20'
-          # Removed cache: 'npm' because the repo doesn't have a package-lock.json
           
       - name: Setup Java 21
         uses: actions/setup-java@v4
         with: 
-          java-version: '21' # Use 21 to support modern BouncyCastle bytecode
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Install Dependencies
         run: |
-          npm install
-          # We ensure CLI and Android platforms match your @capacitor/core version (6.1.0)
-          npm install -D @capacitor/cli@6.1.0 @capacitor/android@6.1.0 --legacy-peer-deps
+          # 1. Install project deps
+          npm install --legacy-peer-deps
+          
+          # 2. Install BUILD TOOLS (The fix for your TypeScript error)
+          # Capacitor needs typescript to read capacitor.config.ts
+          npm install -D typescript @capacitor/cli@6.1.0 @capacitor/android@6.1.0 --legacy-peer-deps
         
       - name: Build Web App
         run: npm run build
         
       - name: Initialize Android Project
         run: |
-          # Use the exact app name and ID from your capacitor.config.ts
-          npx cap init "Violin Reference" com.violin.reference --web-dir dist
+          # Create the folder
+          # We use --web-dir dist to match your vite config
           npx cap add android || true
           
-          # CRITICAL FIX: Disable Jetifier on-the-fly
-          # This stops the "Failed to create Jar file bcprov" error
+          # CRITICAL: Disable Jetifier (Fixes the Bouncy Castle / bcprov crash)
+          # We create the file if it doesn't exist and force the setting
+          mkdir -p android
           echo "android.enableJetifier=false" >> android/gradle.properties
           echo "android.useAndroidX=true" >> android/gradle.properties
 
-          # OPTIONAL: Ensure SDK versions are high enough for Java 21
-          sed -i 's/compileSdkVersion = [0-9]*/compileSdkVersion = 34/g' android/variables.gradle
-          sed -i 's/targetSdkVersion = [0-9]*/targetSdkVersion = 34/g' android/variables.gradle
+          # Force SDK 34 for Java 21 compatibility
+          if [ -f android/variables.gradle ]; then
+            sed -i 's/compileSdkVersion = [0-9]*/compileSdkVersion = 34/g' android/variables.gradle
+            sed -i 's/targetSdkVersion = [0-9]*/targetSdkVersion = 34/g' android/variables.gradle
+          fi
       
       - name: Sync Capacitor
         run: npx cap sync android
         
       - name: Decode Keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/violin-reference.jks
+        run: |
+          # Ensure the directory exists before decoding
+          mkdir -p android/app
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/violin-reference.jks
 
       - name: Build Signed Release APK
         run: |
           chmod +x android/gradlew
           cd android
-          # --no-daemon prevents file-lock issues on the ephemeral runner
           ./gradlew assembleRelease --no-daemon --stacktrace \
             -Pandroid.injected.signing.store.file=$PWD/app/violin-reference.jks \
             -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
